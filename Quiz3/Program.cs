@@ -18,11 +18,10 @@ namespace Quiz3
 
         static void Main(string[] args)
         {
-
+            states = States.INIT;
 
             switch (states)
             {
-
                 case States.INIT:
 
                     SerialPort _serialPort = new SerialPort();
@@ -31,21 +30,20 @@ namespace Quiz3
                     _serialPort.DtrEnable = true;
                     _serialPort.Open();
 
-                    break;
-
-                case States.WRITE:
-
-                    Serial.write(0x2A);
+                    states = States.WRITE;
                     break;
 
                 case States.WAITING:
+                    // If taclas E y R
+                    break;
+
+                case States.WRITE:
+                    Serial.write(0x2A);
 
                     break;
 
-
-
                 case States.READ:
-
+                    string message = _serialPort.ReadLine();
                     break;
             }
         }
