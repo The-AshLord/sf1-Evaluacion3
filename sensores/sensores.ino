@@ -41,29 +41,41 @@ void taskSerial()
       }
     case SerialStates::WAITING_REQ:
       {
+        if (Serial.available() > 0)
+        {
+          String dato = Serial.readStringUntil('\n');
+          if (dato == "0x2A")
+          {
+            Serial.print("0x3E")
+
+          }else 
+          {
+            Serial.print("0xB0")
+          }
 
 
+        }
       }
-      break;
-      case SerialStates::READ_REQ:
+      break;  // Aqui tambien podriamos borrar el estado de Read ya que elo de Waiting tambien funcionaria como read, no?
+    case SerialStates::READ_REQ:
       {
 
 
       }
       break;
-      case SerialStates::WRITE_REQ:
+    case SerialStates::WRITE_REQ:
       {
 
 
       }
       break;
-      case SerialStates::WAITING_RESPONSE:
+    case SerialStates::WAITING_RESPONSE:
       {
 
 
       }
       break;
-      case SerialStates::PROCESS_RESPONSE:
+    case SerialStates::PROCESS_RESPONSE:
       {
 
 

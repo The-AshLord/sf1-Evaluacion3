@@ -30,15 +30,28 @@ namespace Quiz3
                     _serialPort.DtrEnable = true;
                     _serialPort.Open();
 
-                    states = States.WRITE;
+                    states = States.WAITING;
                     break;
 
                 case States.WAITING:
                     // If taclas E y R
-                    break;
 
+                    switch (Console.ReadKey(true).Key)
+                    {
+                        case ConsoleKey.82: //Cuando se presiona R (CORRECTO)
+                                
+                            Serial.write(0x2A);
+                            states = States.READ;
+                            break;
+                        case ConsoleKey.69: //Cuando se presiona E (INCORRECTO)
+                            Serial.write(0x2B);
+                            states = States.READ;
+                            break;
+                    }
+                    break;
+                    // Estuve pensando en borrar el estado de write 
                 case States.WRITE:
-                    Serial.write(0x2A);
+                   // Serial.write(0x2A); 
 
                     break;
 
