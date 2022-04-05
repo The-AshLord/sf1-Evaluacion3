@@ -14,12 +14,13 @@ namespace Quiz3
     }
     class Program
     {
+        static States? states = null;
 
         static void Main(string[] args)
         {
 
 
-            switch (States)
+            switch (states)
             {
 
                 case States.INIT:
@@ -49,3 +50,4 @@ namespace Quiz3
             }
         }
     }
+}
