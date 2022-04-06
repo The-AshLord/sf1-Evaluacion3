@@ -1,5 +1,5 @@
 #define DEBUG
-
+//Configuracion para la Pantalla de Nico
 #ifdef DEBUG
 #include "SSD1306Wire.h"
 static SSD1306Wire display(0x3c, SDA, SCL, GEOMETRY_128_32);
@@ -30,6 +30,11 @@ void taskSerial()
 {
   enum class SerialStates {INIT, WAITING_REQ, READ_REQ, WIRTE_REQ, WAITING_RESPONSE, PROCESS_RESPONSE};
   static SerialStates serialState =  SerialStates::INIT;
+  static uint8_t bufferRx[20] = {0};
+  static uint8_t dataCounter = 0;
+//static uint32_t timerOld;
+  static uint8_t bufferTx[20];
+  static uint8_t sendPackages = 0; //incrementarlo cada vez que se envie un paquete 
 
   switch (serialState)
   {
@@ -47,8 +52,11 @@ void taskSerial()
           if (dato == "0x2A")
           {
             Serial.write("0x3E")
-
-          }else 
+            dataCounter = 0;
+            //timerOld = millis();
+            serialState = SerialStates::READ_REQ;
+          }
+          else
           {
             Serial.write("0xB0")
           }
@@ -59,13 +67,50 @@ void taskSerial()
       break;  // Aqui tambien podriamos borrar el estado de Read ya que elo de Waiting tambien funcionaria como read, no?
     case SerialStates::READ_REQ:
       {
-
-
       }
       break;
-    case SerialStates::WRITE_REQ:
+    case SerialStates::WRITE_REQ: //aqui incluimos el checksum
       {
+        /*if ( se recibio el 0xB0 ) {
+          //Bad route
+          //state = StateTaskCom::WAIT_INIT;
+          }*/
 
+        //Hay que revisar de esto que es todo lo que necesitamos  
+        bufferRx[dataCounter] = dataRx;
+        dataCounter++;
+
+        // is the packet completed?
+        if (bufferRx[0] == dataCounter - 1) {
+
+          // Check received data
+          uint8_t calcChecksum = 0;
+          for (uint8_t i = 1; i <= dataCounter - 1; i++) {
+            calcChecksum = calcChecksum ^ bufferRx[i - 1];
+          }
+          if (calcChecksum == bufferRx[dataCounter - 1]) {
+            bufferTx[0] = dataCounter - 3; //Length
+            calcChecksum = bufferTx[0];
+
+            // Calculate Tx checksum
+            for (uint8_t i = 4; i <= dataCounter - 1; i++) {
+              bufferTx[i - 3] = bufferRx[i - 1];
+              calcChecksum = calcChecksum ^ bufferRx[i - 1];
+            }
+
+            bufferTx[dataCounter - 3] = calcChecksum;
+            Serial.write(0x4A);
+            Serial.write(bufferTx, dataCounter - 2);
+            //timerOld = millis();
+            state = StateTaskCom::WAITING_RESPONSE;
+          }
+          else {
+            Serial.write(0x3F);
+            dataCounter = 0;
+            //timerOld = millis();
+            state = StateTaskCom::WRITE_REQ;
+          }
+        }
 
       }
       break;
@@ -91,7 +136,7 @@ void taskBeat() {
   enum class BeatStates {INIT, BEATING};
   static BeatStates beatlState =  BeatStates::INIT;
   static uint32_t previousMillis = 0;
-  const uint32_t interval = 500;
+  const uint32_t interval = 500; //Ya está a 1Hz
   static bool ledState = false;
 
   switch (beatlState) {
