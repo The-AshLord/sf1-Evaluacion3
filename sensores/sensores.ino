@@ -46,11 +46,11 @@ void taskSerial()
           String dato = Serial.readStringUntil('\n');
           if (dato == "0x2A")
           {
-            Serial.print("0x3E")
+            Serial.write("0x3E")
 
           }else 
           {
-            Serial.print("0xB0")
+            Serial.write("0xB0")
           }
 
 

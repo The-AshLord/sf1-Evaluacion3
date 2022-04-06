@@ -11,6 +11,7 @@ namespace Quiz3
         WAITING,
         WRITE,
         READ,
+        RESPONSE,
     }
     class Program
     {
@@ -34,29 +35,38 @@ namespace Quiz3
                     break;
 
                 case States.WAITING:
-                    // If taclas E y R
+
+                   if(Console.ReadKey(true).Key)
+                    {
+                        states = States.WRITE;
+                    }
+
+                    break;
+                case States.WRITE:
+
+                    _serialPort.WriteLine(0x2A);
+                    states = States.READ;
+                    break;
+
+                case States.READ:
+                    string message = _serialPort.ReadLine();
+                    states = States.RESPONSE;
+                    break;
+
+                case States.RESPONSE:
 
                     switch (Console.ReadKey(true).Key)
                     {
                         case ConsoleKey.82: //Cuando se presiona R (CORRECTO)
                                 
-                            Serial.write(0x2A);
+                             _serialPort.WriteLine(0x2A);
                             states = States.READ;
                             break;
                         case ConsoleKey.69: //Cuando se presiona E (INCORRECTO)
-                            Serial.write(0x2B);
+                            _serialPort.WriteLine(0xB0);
                             states = States.READ;
                             break;
                     }
-                    break;
-                    // Estuve pensando en borrar el estado de write 
-                case States.WRITE:
-                   // Serial.write(0x2A); 
-
-                    break;
-
-                case States.READ:
-                    string message = _serialPort.ReadLine();
                     break;
             }
         }
