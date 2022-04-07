@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO.Ports;
-using System.Threading;
 
 namespace Quiz3
 {
@@ -10,11 +8,16 @@ namespace Quiz3
         INIT,
         WAITING,
         READ,
+        CHECHING,
+        RESPONSE,
     }
     class Program
     {
         static States? states = null;
-
+        static int bufferRx[20] = { 0 };
+        static int dataCounter = 0;
+        static int bufferTx[20];
+        static bool isCheksumCorrect = false;
 
         static void Main(string[] args)
         {
@@ -23,7 +26,7 @@ namespace Quiz3
             switch (states)
             {
                 case States.INIT:
-                    int i = 0;
+
                     bool Error;                                 //Esta variable es para poder induc
                     SerialPort _serialPort = new SerialPort();
                     _serialPort.PortName = "COM3";
@@ -50,39 +53,88 @@ namespace Quiz3
                             states = States.READ;
                             break;
                     }
+
                     break;
 
                 case States.READ:
-                    string message = _serialPort.ReadLine();
-                    
-                    if (message = "correct")
+                   
+                   //recibe los datos 
+
+
+                    states = States.RESPONSE;
+                    break;
+                case States.CHECHING:
+
+                    while (dataCounter <18)
                     {
-                        if (Error = true;)           //CAMBIAR CORRECT POR EL VALOR CORRECTO
+                        int dataRx = _serialPort.ReadLine(); //pendiente de revisión
+
+                        bufferRx[dataCounter] = dataRx;
+                        dataCounter++;
+
+                        // is the packet completed?
+                        if (bufferRx[0] == dataCounter - 1)
                         {
-                            while (i < 3)
+
+                            // Check received data
+                            int calcChecksum = 0;
+                            for (int i = 1; i <= dataCounter - 1; i++)
                             {
-                                _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
-                                i++;
+                                calcChecksum = calcChecksum ^ bufferRx[i - 1];
                             }
-                            states = States.INIT;
+                            if (calcChecksum == bufferRx[dataCounter - 1])
+                            {
+                                bufferTx[0] = dataCounter - 3; //Length
+                                calcChecksum = bufferTx[0];
+
+                                // Calculate Tx checksum
+                                for (int j = 4; j <= dataCounter - 1; j++)
+                                {
+                                    bufferTx[j - 3] = bufferRx[j - 1];
+                                    calcChecksum = calcChecksum ^ bufferRx[j - 1];
+                                }
+
+                                bufferTx[dataCounter - 3] = calcChecksum;
+                                isCheksumCorrect = true;
+                                Serial.write(bufferTx, dataCounter - 2);
+
+                                states = States.RESPONSE;
+                            }
+                            else
+                            {
+                                //Si detecta que algo falla
+                                _serialPort.WriteLine(0xB0);
+                                dataCounter = 0;
+
+                                states = States.CHECHING; 
+                            }
+                        }
+                    }
+
+
+                    break;
+
+                case States.RESPONSE:
+
+                    if (isCheksumCorrect = true;)
+                    {
+                        if (Error = true;)           // CAMBIAR CORRECT POR EL VALOR CORRECTO
+                        {
+                            _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                            states = States.READ;
                         }
                         else
                         {
                             _serialPort.WriteLine(0xE3); //ESTA EN MODO MELO
-                            states = States.INIT;
                         }
                     }
                     else
                     {
-                        while (i < 3)
-                        {
-                            _serialPort.WriteLine(0xB0);  //EL CHECKSUM ESTA MALO 
-                            i++;
-                        }
-
-                        states = States.INIT;
-
+                        _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                        states = States.READ;
                     }
+            }
+
                     break;
             }
         }
