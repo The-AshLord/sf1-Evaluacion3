@@ -28,7 +28,7 @@ void loop() {
 
 void taskSerial()
 {
-  enum class SerialStates {INIT, WAITING_REQ, WRITE_REQ, WAITING_RESPONSE, PROCESS_RESPONSE};
+  enum class SerialStates {INIT, WAITING_REQ, WRITE_REQ, WAITING_RESPONSE, CORRECT_RESPONSE};
   static SerialStates serialState =  SerialStates::INIT;
   static uint8_t bufferRx[20] = {0};
   static uint8_t dataCounter = 0;
@@ -101,16 +101,19 @@ void taskSerial()
                   calcChecksum = calcChecksum ^ bufferRx[i - 1];
                 }
 
-                bufferTx[dataCounter - 3] = calcChecksum;
-                Serial.write(0x4A);
+                bufferTx[dataCounter - 3] = calcChecksum;     //CUANDO ESTA BUENO EL CHECK SUM
+                Serial.write(0x4A);                           //AQUI SE ENVIA EL PAQUETE
                 Serial.write(bufferTx, dataCounter - 2);
                 //timerOld = millis();
-                serialState = SerialStates::WAITING_RESPONSE;
-              } else {
-                Serial.write(0x3F);
+                serialState = SerialStates::CORRECT_RESPONSE:
+              } else {                                        //CUANDO ESTA BUENO EL CHECK SUM
+                Serial.write(0x3F);                           //AQUI SE ENVIA EL PAQUETE
                 dataCounter = 0;
                 //timerOld = millis();
                 serialState = SerialStates::WRITE_REQ;
+
+
+                // DESPUES DE LOS 3 INTENTOS SE INVOCA  taskBeat();
               }
             }
 
@@ -125,10 +128,9 @@ void taskSerial()
 
         }
         break;
-      case SerialStates::PROCESS_RESPONSE:
+      case SerialStates::CORRECT_RESPONSE:
         {
-          if (calcChecksum == "correct") // EDITAR CON EL CHECK SUM CORRECTO
-          {
+
             static uint32_t CorrectCounter = 0;
             const uint32_t CorrectMaxTime = 3000;
 
@@ -141,13 +143,8 @@ void taskSerial()
             if ( (millis() - CorrectCounter) >= CorrectMaxTime)
             {
               display.clear();
-              serialState = SerialStates::WRITE_REQ;
+              serialState = SerialStates::WRITE_INIT;
             }
-          }
-          else
-          {
-            taskBeat();
-          }
           break;
         }
       default:
@@ -190,10 +187,11 @@ void taskSerial()
             }
             digitalWrite(LED1, ledState);
           }
+          
           if ( (millis() - LedTaskCounter) >= LedTaskTime)
           {
             ledState = false
-            serialState = SerialStates::WRITE_REQ;
+            serialState = SerialStates::WRITE_INIT;
           }
 
           break;
