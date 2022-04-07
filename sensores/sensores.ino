@@ -36,6 +36,7 @@ void taskSerial()
   //static uint32_t timerOld;
   static uint8_t bufferTx[17];
   static uint8_t sendPackages = 0; //incrementarlo cada vez que se envie un paquete
+  static uint8_t packagesArr[17] = {0}; //paquete de numeros que vamos a enviar
 
 
   switch (serialState)
@@ -64,213 +65,203 @@ void taskSerial()
       break;
     case SerialStates::WRITE_REQ: //aqui incluimos el checksum
       {
-        /*if ( se recibio el 0xB0 ) {
-          //Bad route
-          //state = StateTaskCom::WAIT_INIT;
-          }*/
-        //Hay que revisar que neceistamos de todo esto
-        if (Serial.available()) {
-          uint8_t dataRx = Serial.read();
-          if (dataCounter >= 20) {
-            Serial.write(0x3F);
-            dataCounter = 0;
-            //timerOld = millis();
-            serialState = SerialStates::WRITE_REQ;
-          } else
-          { bufferRx[dataCounter] = dataRx;
-            dataCounter++;
+        //Armamos el paquete:
+        float fnum01 = 3589.3645;
+        float fnum02 = 1519.2745;
+        float fnum03 = 1313.2121;
+        uint32_t inum32 = 0x3F4D3F4D;
+        //Llenamos el paquete:
+        memcpy(packagesArr, (uint8_t *)&fnum01, 4);
+        memcpy(packagesArr + 4, (uint8_t *)&fnum02, 4);
+        memcpy(packagesArr + 8, (uint8_t *)&fnum03, 4);
+        memcpy(packagesArr + 12, (uint8_t *)&inum32, 4);
+        //para el cheksum
+        dataCounter = 0;
+        //Empezamos el chechsum propiamente dicho
+        if (Serial.available())
+        {
+          //Empezamos a recorrer el arreglo
+          bufferRx[dataCounter] = packagesArr[dataCounter];
+          dataCounter++;
 
-            // is the packet completed?
-            if (bufferRx[0] == dataCounter - 1) {
+          // is the packet completed?
+          if (bufferRx[0] == dataCounter - 1) {
 
-              // Check received data
-              uint8_t calcChecksum = 0;
-              for (uint8_t i = 1; i <= dataCounter - 1; i++) {
+            // Check received data
+            uint8_t calcChecksum = 0;
+            for (uint8_t i = 1; i <= dataCounter - 1; i++) {
+              calcChecksum = calcChecksum ^ bufferRx[i - 1];
+            }
+            if (calcChecksum == bufferRx[dataCounter - 1]) {
+              bufferTx[0] = dataCounter - 3; //Length
+              calcChecksum = bufferTx[0];
+
+              // Calculate Tx checksum
+              for (uint8_t i = 4; i <= dataCounter - 1; i++) {
+                bufferTx[i - 3] = bufferRx[i - 1];
                 calcChecksum = calcChecksum ^ bufferRx[i - 1];
               }
-              if (calcChecksum == bufferRx[dataCounter - 1]) {
-                bufferTx[0] = dataCounter - 3; //Length
-                calcChecksum = bufferTx[0];
 
-                // Calculate Tx checksum
-                for (uint8_t i = 4; i <= dataCounter - 1; i++) {
-                  bufferTx[i - 3] = bufferRx[i - 1];
-                  calcChecksum = calcChecksum ^ bufferRx[i - 1];
-                }
+              bufferTx[dataCounter - 3] = calcChecksum;                // ESTO DEBERIA DE IR EN VISUAL
+              //Serial.write(0x4A);
+              Serial.write(bufferTx, dataCounter - 2);
+              //timerOld = millis();
+              serialState = SerialStates::CORRECT_RESPONSE;
+            } else {
+              //Serial.write(0x3F);
+              dataCounter = 0;
+              //timerOld = millis();
+              serialState = SerialStates::WRITE_REQ;
+              //RECORDAR PONER serialState = SerialStates::READ_RESPONSE;
 
-                bufferTx[dataCounter - 3] = calcChecksum;                // ESTO DEBERIA DE IR EN VISUAL
-                Serial.write(0x4A);
-                Serial.write(bufferTx, dataCounter - 2);
-                //timerOld = millis();
-                serialState = SerialStates::CORRECT_RESPONSE;
-              } else {
-                Serial.write(0x3F);
-                dataCounter = 0;
-                //timerOld = millis();
-                serialState = SerialStates::WRITE_REQ;
-                //RECORDAR PONER serialState = SerialStates::READ_RESPONSE;
-
-                // DESPUES DE LOS 3 INTENTOS SE INVOCA  taskBeat();
-              }
+              // DESPUES DE LOS 3 INTENTOS SE INVOCA  taskBeat();
             }
-
           }
-
 
         }
-        break;
 
-      case SerialStates::READ_RESPONSE:
+
+      }
+      break;
+
+    case SerialStates::READ_RESPONSE:
+      {
+        if (Serial.available() > 0)
         {
-          if (Serial.available() > 0)
+          String respuesta = Serial.readStringUntil('\n');
+
+          if (respuesta == "0xE3")
           {
-            String respuesta = Serial.readStringUntil('\n');
-
-            if (respuesta == "0xE3")
-            {
-              serialState = SerialStates::CORRECT_RESPONSE;              //Si llega el E3 manda a CORRECT RESPONSE
-            }
-            else if (respuesta == "0xB0")
-            {
-              while (sendPackages < 3)
-                // AQUI VA LO QUE HACE MANDAR EL PAQUETE
-                sendPackages++;
-            }
-            //taskBeat();                               //Despues de mandar 3 veces el Pqte se va a INCORRECT RESPONSE
-            serialState = SerialStates::INCORRECT_RESPONSE;
+            serialState = SerialStates::CORRECT_RESPONSE;              //Si llega el E3 manda a CORRECT RESPONSE
           }
-        case SerialStates::CORRECT_RESPONSE:
+          else if (respuesta == "0xB0")
           {
-
-            static uint32_t CorrectCounter = 0;
-            const uint32_t CorrectMaxTime = 3000;
-
-            CorrectCounter = millis();
-
-            display.clear();
-            display.drawString(9, 0, "CORRECT!");
-            display.display();
-
-            if ( (millis() - CorrectCounter) >= CorrectMaxTime)
-            {
-              display.clear();
-              serialState = SerialStates::INIT;
-            }
-            break;                               //SE PRENDE LA PANTALLA DICE CORRECTO 3S Y SE REINICIA EL PROGRAMA
+            while (sendPackages < 3)
+              // AQUI VA LO QUE HACE MANDAR EL PAQUETE
+              Serial.write(packagesArr, 17);
+              sendPackages++;
           }
-
-        case SerialStates::INCORRECT_RESPONSE:
-          {
-            enum class BeatStates {INIT, BEATING};
-            static BeatStates beatlState =  BeatStates::INIT;
-            static uint32_t previousMillis = 0;
-            const uint32_t interval = 500; //Ya está a 1Hz
-
-
-            const uint32_t LedTaskTime = 3000;
-            static uint32_t LedtaskCounter = 0;
-
-            switch (beatlState)
-            {
-              case BeatStates::INIT:
-                {
-                  digitalWrite(LED1, ledState);
-                  pinMode(LED1, OUTPUT);
-                  beatlState = BeatStates::BEATING;
-                  break;
-                }
-              case BeatStates::BEATING:
-                {
-                  LedtaskCounter = millis();
-
-                  display.clear();
-                  display.drawString(9, 0, "INCORRECT!");
-                  display.display();
-
-                  if ( (millis() - previousMillis) >= interval)
-                  {
-                    previousMillis = millis();
-
-                    if (ledState == false)
-                    {
-                      ledState = true;
-                    } else {
-                      ledState = false;
-                    }
-                    digitalWrite(LED1, ledState);
-                  }
-
-                  if ( (millis() - LedtaskCounter) >= LedTaskTime)
-                  {
-                    ledState = false;
-                    //serialState = SerialStates::INIT;
-                  }
-
-                  break;
-                }
-              default:
-                break;
-            }
-            break;
-          }
-
-        default:
-          break;
+          //taskBeat();                               //Despues de mandar 3 veces el Pqte se va a INCORRECT RESPONSE
+          serialState = SerialStates::INCORRECT_RESPONSE;
         }
       }
-  }
-}
- // void taskBeat()
- /* {
-    enum class BeatStates {INIT, BEATING};
-    static BeatStates beatlState =  BeatStates::INIT;
-    static uint32_t previousMillis = 0;
-    const uint32_t interval = 500; //Ya está a 1Hz
+    case SerialStates::CORRECT_RESPONSE:
+      {
 
+        static uint32_t CorrectCounter = 0;
+        const uint32_t CorrectMaxTime = 3000;
 
-    const uint32_t LedTaskTime = 3000;
-    static uint32_t LedtaskCounter = 0;
+        CorrectCounter = millis();
 
-    switch (beatlState)
-    {
-      case BeatStates::INIT:
+        display.clear();
+        display.drawString(9, 0, "CORRECT!");
+        display.display();
+
+        if ( (millis() - CorrectCounter) >= CorrectMaxTime)
         {
-          digitalWrite(LED1, ledState);
-          pinMode(LED1, OUTPUT);
-          beatlState = BeatStates::BEATING;
-          break;
-        }
-      case BeatStates::BEATING:
-        {
-          LedtaskCounter = millis();
-
           display.clear();
-          display.drawString(9, 0, "INCORRECT!");
-          display.display();
-
-          if ( (millis() - previousMillis) >= interval)
-          {
-            previousMillis = millis();
-
-            if (ledState == false)
-            {
-              ledState = true;
-            } else {
-              ledState = false;
-            }
-            digitalWrite(LED1, ledState);
-          }
-
-          if ( (millis() - LedtaskCounter) >= LedTaskTime)
-          {
-            ledState = false;
-            //serialState = SerialStates::INIT;
-          }
-
-          break;
+          serialState = SerialStates::INIT;
         }
-      default:
+        break;                               //SE PRENDE LA PANTALLA DICE CORRECTO 3S Y SE REINICIA EL PROGRAMA
+      }
+
+    case SerialStates::INCORRECT_RESPONSE:
+      {
+        enum class BeatStates {INIT, BEATING};
+        BeatStates beatlState =  BeatStates::INIT;
+        uint32_t previousMillis = 0;
+        const uint32_t interval = 500; //Ya está a 1Hz
+
+
+        const uint32_t LedTaskTime = 3000;
+        uint32_t LedtaskCounter = 0;
+        digitalWrite(LED1, ledState);
+        pinMode(LED1, OUTPUT);
+        LedtaskCounter = millis();
+
+        display.clear();
+        display.drawString(9, 0, "INCORRECT!");
+        display.display();
+
+        if ( (millis() - previousMillis) >= interval)
+        {
+          previousMillis = millis();
+
+          if (ledState == false)
+          {
+            ledState = true;
+          } else {
+            ledState = false;
+          }
+          digitalWrite(LED1, ledState);
+        }
+
+        if ( (millis() - LedtaskCounter) >= LedTaskTime)
+        {
+          ledState = false;
+          serialState = SerialStates::INIT;
+        }
         break;
-    }
+      }
+
+    default:
+      break;
   }
-  */
+
+
+}
+
+// void taskBeat()
+/* {
+   enum class BeatStates {INIT, BEATING};
+   static BeatStates beatlState =  BeatStates::INIT;
+   static uint32_t previousMillis = 0;
+   const uint32_t interval = 500; //Ya está a 1Hz
+
+
+   const uint32_t LedTaskTime = 3000;
+   static uint32_t LedtaskCounter = 0;
+
+   switch (beatlState)
+   {
+     case BeatStates::INIT:
+       {
+         digitalWrite(LED1, ledState);
+         pinMode(LED1, OUTPUT);
+         beatlState = BeatStates::BEATING;
+         break;
+       }
+     case BeatStates::BEATING:
+       {
+         LedtaskCounter = millis();
+
+         display.clear();
+         display.drawString(9, 0, "INCORRECT!");
+         display.display();
+
+         if ( (millis() - previousMillis) >= interval)
+         {
+           previousMillis = millis();
+
+           if (ledState == false)
+           {
+             ledState = true;
+           } else {
+             ledState = false;
+           }
+           digitalWrite(LED1, ledState);
+         }
+
+         if ( (millis() - LedtaskCounter) >= LedTaskTime)
+         {
+           ledState = false;
+           //serialState = SerialStates::INIT;
+         }
+
+         break;
+       }
+     default:
+       break;
+   }
+  }
+*/
