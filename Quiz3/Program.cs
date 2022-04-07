@@ -7,7 +7,6 @@ namespace Quiz3
 {
     enum States
     {
-        INIT,
         WAITING,
         READ,
         CHECHING,
@@ -16,16 +15,17 @@ namespace Quiz3
     class Program
     {
         static States? states = null;
-        static int[] bufferRx = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
+        static int[] bufferRx = new int[17];
         static int dataCounter = 0;
-        static int[] bufferTx = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        static int[] bufferTx = new int[17];
         static bool isCheksumCorrect = false;
         static bool Error;
+        static int B0Counter = 0;
 
 
         static void Main(string[] args)
         {
-            states = States.INIT;
+            states = States.WAITING;
             SerialPort _serialPort = new SerialPort();
             _serialPort.PortName = "COM3";
             _serialPort.BaudRate = 115200;
@@ -40,13 +40,6 @@ namespace Quiz3
 
             switch (states)
             {
-                case States.INIT:
-
-                   
-
-                    states = States.WAITING;
-                    break;
-
                 case States.WAITING:
 
                     switch (Console.ReadKey(true).Key)
@@ -88,6 +81,7 @@ namespace Quiz3
 
                     states = States.CHECHING;
                     break;
+
                 case States.CHECHING:
 
                     while (dataCounter < 18)
@@ -129,9 +123,10 @@ namespace Quiz3
                             {
                                 //Si detecta que algo falla
                                 _serialPort.WriteLine("0xB0");
+                                B0Counter++;
                                 dataCounter = 0;
 
-                                states = States.CHECHING;
+                                states = States.READ;
                             }
                         }
                     }
@@ -141,22 +136,31 @@ namespace Quiz3
 
                 case States.RESPONSE:
                     {
-
+                        if (B0Counter >= 3)
+                        {
+                            
+                            states = States.WAITING;
+                        }
                         if (isCheksumCorrect == true)
                         {
                             if (Error == true)           // CAMBIAR CORRECT POR EL VALOR CORRECTO
                             {
+                                //falta contador Contador 
                                 _serialPort.WriteLine("0xB0");  //ESTA EN MODO ERROR
+                                B0Counter++;
                                 states = States.READ;
+                            
                             }
                             else
                             {
                                 _serialPort.WriteLine("0xE3"); //ESTA EN MODO MELO
+
                             }
                         }
                         else
                         {
-                            _serialPort.WriteLine("0xB0");  //ESTA EN MODO ERROR
+                            _serialPort.WriteLine("0xB0");
+                            B0Counter++;//ESTA EN MODO ERROR
                             states = States.READ;
                         }
                     }

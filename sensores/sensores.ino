@@ -135,92 +135,94 @@ void taskSerial()
 
            // DESPUES DE LOS 3 INTENTOS SE INVOCA  taskBeat();
           }*/
-          break;
+        break;
       }
 
-case SerialStates::READ_RESPONSE:
-  {
-    if (Serial.available())
-    {
-      //String respuesta = Serial.readStringUntil('\n');
-
-      if (Serial.read() == 0xE3)
+    case SerialStates::READ_RESPONSE:
       {
-        serialState = SerialStates::CORRECT_RESPONSE;              //Si llega el E3 manda a CORRECT RESPONSE
+        if (Serial.available())
+        {
+          //String respuesta = Serial.readStringUntil('\n');
+
+          if (Serial.read() == 0xE3)
+          {
+            serialState = SerialStates::CORRECT_RESPONSE;              //Si llega el E3 manda a CORRECT RESPONSE
+          }
+          else if (Serial.read() == 0xB0)
+          {
+            while (sendPackages < 3)
+              // AQUI VA LO QUE HACE MANDAR EL PAQUETE
+              Serial.write(packagesArr, 17);
+            sendPackages++;
+          }
+          //taskBeat();                               //Despues de mandar 3 veces el Pqte se va a INCORRECT RESPONSE
+          serialState = SerialStates::INCORRECT_RESPONSE;
+        }
       }
-      else if (Serial.read() == 0xB0)
+    case SerialStates::CORRECT_RESPONSE:
       {
-        while (sendPackages < 3)
-          // AQUI VA LO QUE HACE MANDAR EL PAQUETE
-          Serial.write(packagesArr, 17);
-        sendPackages++;
+
+        static uint32_t CorrectCounter = 0;
+        const uint32_t CorrectMaxTime = 3000;
+
+        CorrectCounter = millis();
+
+        display.clear();
+        display.drawString(9, 0, "CORRECT!");
+        display.display();
+
+        if ( (millis() - CorrectCounter) >= CorrectMaxTime)
+        {
+          display.clear();
+          serialState = SerialStates::INIT;
+        }
+        break;                               //SE PRENDE LA PANTALLA DICE CORRECTO 3S Y SE REINICIA EL PROGRAMA
       }
-      //taskBeat();                               //Despues de mandar 3 veces el Pqte se va a INCORRECT RESPONSE
-      serialState = SerialStates::INCORRECT_RESPONSE;
-    }
-  }
-case SerialStates::CORRECT_RESPONSE:
-  {
 
-    static uint32_t CorrectCounter = 0;
-    const uint32_t CorrectMaxTime = 3000;
-
-    CorrectCounter = millis();
-
-    display.clear();
-    display.drawString(9, 0, "CORRECT!");
-    display.display();
-
-    if ( (millis() - CorrectCounter) >= CorrectMaxTime)
-    {
-      display.clear();
-      serialState = SerialStates::INIT;
-    }
-    break;                               //SE PRENDE LA PANTALLA DICE CORRECTO 3S Y SE REINICIA EL PROGRAMA
-  }
-
-case SerialStates::INCORRECT_RESPONSE:
-  {
-    //enum class BeatStates {INIT, BEATING};
-    BeatStates beatlState =  BeatStates::INIT;
-    uint32_t previousMillis = 0;
-    const uint32_t interval = 500; //Ya está a 1Hz
-
-
-    const uint32_t LedTaskTime = 3000;
-    uint32_t LedtaskCounter = 0;
-    digitalWrite(LED1, ledState);
-    pinMode(LED1, OUTPUT);
-    LedtaskCounter = millis();
-
-    display.clear();
-    display.drawString(9, 0, "INCORRECT!");
-    display.display();
-
-    if ( (millis() - previousMillis) >= interval)
-    {
-      previousMillis = millis();
-
-      if (ledState == false)
+    case SerialStates::INCORRECT_RESPONSE:
       {
-        ledState = true;
-      } else {
-        ledState = false;
+
+        uint32_t previousMillis = 0;
+        uint32_t previousMillis = 0;
+        const uint32_t interval = 500; //Ya está a 1Hz
+        const uint32_t LedTaskTime = 3000;
+        uint32_t LedtaskCounter = 0;
+
+        digitalWrite(LED1, ledState);
+        pinMode(LED1, OUTPUT);
+        LedtaskCounter = millis();
+
+        display.clear();
+        display.drawString(9, 0, "INCORRECT!");
+        display.display();
+
+        if ( (millis() - previousMillis) >= interval)
+        {
+          previousMillis = millis();
+
+          if (ledState == false)
+          {
+            ledState = true; //revisar si necesita high y low
+          } else {
+            ledState = false;
+          }
+          digitalWrite(LED1, ledState);
+        }
+
+        if ( (millis() - LedtaskCounter) >= LedTaskTime)
+        {
+          previousMillis = millis();
+          ledState = false;
+          digitalWrite(LED1, ledState);
+          serialState = SerialStates::INIT;
+
+        }
+        break;
       }
-      digitalWrite(LED1, ledState);
-    }
 
-    if ( (millis() - LedtaskCounter) >= LedTaskTime)
-    {
-      ledState = false;
-      serialState = SerialStates::INIT;
-    }
-    break;
+    default:
+      break;
   }
-
-default:
-  break;
-}
 
 }
 
