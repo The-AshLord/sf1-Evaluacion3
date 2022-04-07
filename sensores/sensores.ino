@@ -30,10 +30,10 @@ void taskSerial()
 {
   enum class SerialStates {INIT, WAITING_REQ, WRITE_REQ, WAITING_RESPONSE, CORRECT_RESPONSE};
   static SerialStates serialState =  SerialStates::INIT;
-  static uint8_t bufferRx[20] = {0};
+  static uint8_t bufferRx[17] = {0};
   static uint8_t dataCounter = 0;
   //static uint32_t timerOld;
-  static uint8_t bufferTx[20];
+  static uint8_t bufferTx[17];
   static uint8_t sendPackages = 0; //incrementarlo cada vez que se envie un paquete
 
   switch (serialState)
