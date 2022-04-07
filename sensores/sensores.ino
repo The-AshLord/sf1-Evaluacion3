@@ -71,7 +71,7 @@ void taskSerial()
           //Bad route
           //state = StateTaskCom::WAIT_INIT;
           }*/
-          //Hay que revisar que neceistamos de todo esto
+        //Hay que revisar que neceistamos de todo esto
         if (Serial.available()) {
           uint8_t dataRx = Serial.read();
           if (dataCounter >= 20) {
@@ -127,45 +127,78 @@ void taskSerial()
         break;
       case SerialStates::PROCESS_RESPONSE:
         {
+          if (calcChecksum == "correct") // EDITAR CON EL CHECK SUM CORRECTO
+          {
+            static uint32_t CorrectCounter = 0;
+            const uint32_t CorrectMaxTime = 3000;
 
+            CorrectCounter = millis();
 
-        }
-        break;
-      }
-    default:
-      break;
-  }
-}
+            display.clear();
+            display.drawString(9, 0, "CORRECT!");
+            display.display();
 
-void taskBeat() {
-  enum class BeatStates {INIT, BEATING};
-  static BeatStates beatlState =  BeatStates::INIT;
-  static uint32_t previousMillis = 0;
-  const uint32_t interval = 500; //Ya está a 1Hz
-  static bool ledState = false;
-
-  switch (beatlState) {
-    case BeatStates::INIT: {
-        digitalWrite(LED1, ledState);
-        pinMode(LED1, OUTPUT);
-        beatlState = BeatStates::BEATING;
-        break;
-      }
-    case BeatStates::BEATING: {
-        if ( (millis() - previousMillis) >= interval) {
-          previousMillis = millis();
-
-          if (ledState == false) {
-            ledState = true;
-          } else {
-            ledState = false;
+            if ( (millis() - CorrectCounter) >= CorrectMaxTime)
+            {
+              display.clear();
+              serialState = SerialStates::WRITE_REQ;
+            }
           }
-          digitalWrite(LED1, ledState);
+          else
+          {
+            taskBeat();
+          }
+          break;
         }
-
+      default:
         break;
       }
-    default:
-      break;
   }
-}
+
+  void taskBeat() {
+    enum class BeatStates {INIT, BEATING};
+    static BeatStates beatlState =  BeatStates::INIT;
+    static uint32_t previousMillis = 0;
+    const uint32_t interval = 500; //Ya está a 1Hz
+    static bool ledState = false;
+
+    const uint32_t LedTaskTime = 3000;
+    static uint32_t LedtaskCounter = 0;
+
+    switch (beatlState) 
+    {
+      case BeatStates::INIT: 
+      {
+          digitalWrite(LED1, ledState);
+          pinMode(LED1, OUTPUT);
+          beatlState = BeatStates::BEATING;
+          break;
+        }
+      case BeatStates::BEATING: 
+      {
+        LedTaskCounter = millis();
+        
+          if ( (millis() - previousMillis) >= interval) 
+          {
+            previousMillis = millis();
+
+            if (ledState == false) 
+            {
+              ledState = true;
+            } else {
+              ledState = false;
+            }
+            digitalWrite(LED1, ledState);
+          }
+          if ( (millis() - LedTaskCounter) >= LedTaskTime)
+          {
+            ledState = false
+            serialState = SerialStates::WRITE_REQ;
+          }
+
+          break;
+        }
+      default:
+        break;
+    }
+  }
