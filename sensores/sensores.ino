@@ -120,9 +120,8 @@ void taskSerial()
 
         }
 
-
+        break;
       }
-      break;
 
     case SerialStates::READ_RESPONSE:
       {
@@ -139,7 +138,7 @@ void taskSerial()
             while (sendPackages < 3)
               // AQUI VA LO QUE HACE MANDAR EL PAQUETE
               Serial.write(packagesArr, 17);
-              sendPackages++;
+            sendPackages++;
           }
           //taskBeat();                               //Despues de mandar 3 veces el Pqte se va a INCORRECT RESPONSE
           serialState = SerialStates::INCORRECT_RESPONSE;
@@ -207,7 +206,6 @@ void taskSerial()
     default:
       break;
   }
-
 
 }
 
