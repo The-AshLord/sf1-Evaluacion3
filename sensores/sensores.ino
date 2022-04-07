@@ -28,7 +28,7 @@ void loop() {
 
 void taskSerial()
 {
-  enum class SerialStates {INIT, WAITING_REQ, WRITE_REQ, WAITING_RESPONSE, CORRECT_RESPONSE};
+  enum class SerialStates {INIT, WAITING_REQ, WRITE_REQ,CORRECT_RESPONSE};
   static SerialStates serialState =  SerialStates::INIT;
   static uint8_t bufferRx[17] = {0};
   static uint8_t dataCounter = 0;
@@ -118,12 +118,6 @@ void taskSerial()
             }
 
           }
-
-
-        }
-        break;
-      case SerialStates::WAITING_RESPONSE:
-        {
 
 
         }
