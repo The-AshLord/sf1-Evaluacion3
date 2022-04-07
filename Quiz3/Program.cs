@@ -9,13 +9,12 @@ namespace Quiz3
     {
         INIT,
         WAITING,
-        WRITE,
         READ,
-        RESPONSE,
     }
     class Program
     {
         static States? states = null;
+
 
         static void Main(string[] args)
         {
@@ -24,7 +23,7 @@ namespace Quiz3
             switch (states)
             {
                 case States.INIT:
-
+                    int i = 0;
                     bool Error;                                 //Esta variable es para poder induc
                     SerialPort _serialPort = new SerialPort();
                     _serialPort.PortName = "COM3";
@@ -51,38 +50,39 @@ namespace Quiz3
                             states = States.READ;
                             break;
                     }
-
-                    break;                                // QUITE EL WRITE PORQUE EL WAITING TAMBIEN ESCRIBE
-                //case States.WRITE:
-
-                //    _serialPort.WriteLine(0x2A);
-                //    states = States.READ;
                     break;
 
                 case States.READ:
                     string message = _serialPort.ReadLine();
+                    
                     if (message = "correct")
                     {
-                        if (Error = true;)           // CAMBIAR CORRECT POR EL VALOR CORRECTO
+                        if (Error = true;)           //CAMBIAR CORRECT POR EL VALOR CORRECTO
                         {
-                            _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                            while (i < 3)
+                            {
+                                _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                                i++;
+                            }
+                            states = States.INIT;
                         }
                         else
                         {
                             _serialPort.WriteLine(0xE3); //ESTA EN MODO MELO
+                            states = States.INIT;
                         }
                     }
                     else
                     {
-                        _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                        while (i < 3)
+                        {
+                            _serialPort.WriteLine(0xB0);  //EL CHECKSUM ESTA MALO 
+                            i++;
+                        }
+
+                        states = States.INIT;
+
                     }
-
-                    states = States.RESPONSE;
-                    break;
-
-                case States.RESPONSE:
-                    
-
                     break;
             }
         }
