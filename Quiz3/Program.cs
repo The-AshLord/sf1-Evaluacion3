@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO.Ports;
+using System.Threading;
 
 namespace Quiz3
 {
@@ -14,26 +16,27 @@ namespace Quiz3
     class Program
     {
         static States? states = null;
-        static int bufferRx[20] = { 0 };
+        static int[] bufferRx = { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 };
         static int dataCounter = 0;
-        static int bufferTx[20];
+        static int[] bufferTx = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         static bool isCheksumCorrect = false;
+        static bool Error;
+
 
         static void Main(string[] args)
         {
             states = States.INIT;
+            SerialPort _serialPort = new SerialPort();
+            _serialPort.PortName = "COM3";
+            _serialPort.BaudRate = 115200;
+            _serialPort.DtrEnable = true;
+            _serialPort.Open();
+
 
             switch (states)
             {
                 case States.INIT:
-
-                    bool Error;                                 //Esta variable es para poder induc
-                    SerialPort _serialPort = new SerialPort();
-                    _serialPort.PortName = "COM3";
-                    _serialPort.BaudRate = 115200;
-                    _serialPort.DtrEnable = true;
-                    _serialPort.Open();
-
+                               
                     states = States.WAITING;
                     break;
 
@@ -41,14 +44,14 @@ namespace Quiz3
 
                     switch (Console.ReadKey(true).Key)
                     {
-                        case ConsoleKey.R; //Cuando se presiona R (CORRECTO)
+                        case ConsoleKey.R: //Cuando se presiona R (CORRECTO)
 
-                            _serialPort.WriteLine(0x2A);
+                            _serialPort.WriteLine("0x2A");
                             Error = false;
                             states = States.READ;
                             break;
-                        case ConsoleKey.E; //Cuando se presiona E (INCORRECTO)
-                            _serialPort.WriteLine(0x2A);
+                        case ConsoleKey.E: //Cuando se presiona E (INCORRECTO)
+                            _serialPort.WriteLine("0x2A");
                             Error = true;
                             states = States.READ;
                             break;
@@ -96,14 +99,14 @@ namespace Quiz3
 
                                 bufferTx[dataCounter - 3] = calcChecksum;
                                 isCheksumCorrect = true;
-                                Serial.write(bufferTx, dataCounter - 2);
+                                //Serial.write(bufferTx, dataCounter - 2);
 
                                 states = States.RESPONSE;
                             }
                             else
                             {
                                 //Si detecta que algo falla
-                                _serialPort.WriteLine(0xB0);
+                                _serialPort.WriteLine("0xB0");
                                 dataCounter = 0;
 
                                 states = States.CHECHING;
@@ -117,21 +120,21 @@ namespace Quiz3
                 case States.RESPONSE:
                     {
 
-                        if (isCheksumCorrect = true)
+                        if (isCheksumCorrect == true)
                         {
-                            if (Error = true)           // CAMBIAR CORRECT POR EL VALOR CORRECTO
+                            if (Error == true)           // CAMBIAR CORRECT POR EL VALOR CORRECTO
                             {
-                                _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                                _serialPort.WriteLine("0xB0");  //ESTA EN MODO ERROR
                                 states = States.READ;
                             }
                             else
                             {
-                                _serialPort.WriteLine(0xE3); //ESTA EN MODO MELO
+                                _serialPort.WriteLine("0xE3"); //ESTA EN MODO MELO
                             }
                         }
                         else
                         {
-                            _serialPort.WriteLine(0xB0);  //ESTA EN MODO ERROR
+                            _serialPort.WriteLine("0xB0");  //ESTA EN MODO ERROR
                             states = States.READ;
                         }
                     }
