@@ -28,20 +28,20 @@ void loop() {
 
 void taskSerial()
 {
-  enum class SerialStates {INIT, WAITING_REQ, READ_REQ, WIRTE_REQ, WAITING_RESPONSE, PROCESS_RESPONSE};
+  enum class SerialStates {INIT, WAITING_REQ, WRITE_REQ, WAITING_RESPONSE, PROCESS_RESPONSE};
   static SerialStates serialState =  SerialStates::INIT;
   static uint8_t bufferRx[20] = {0};
   static uint8_t dataCounter = 0;
-//static uint32_t timerOld;
+  //static uint32_t timerOld;
   static uint8_t bufferTx[20];
-  static uint8_t sendPackages = 0; //incrementarlo cada vez que se envie un paquete 
+  static uint8_t sendPackages = 0; //incrementarlo cada vez que se envie un paquete
 
   switch (serialState)
   {
     case SerialStates::INIT:
       {
         Serial.begin(115200);
-        serialState = SerialStates::WAITING_REQUESTS;
+        serialState = SerialStates::WAITING_REQ;
         break;
       }
     case SerialStates::WAITING_REQ:
@@ -51,22 +51,18 @@ void taskSerial()
           String dato = Serial.readStringUntil('\n');
           if (dato == "0x2A")
           {
-            Serial.write("0x3E")
+            Serial.write("0x3E");
             dataCounter = 0;
             //timerOld = millis();
-            serialState = SerialStates::READ_REQ;
+            serialState = SerialStates::WRITE_REQ;
           }
           else
           {
-            Serial.write("0xB0")
+            Serial.write("0xB0");
           }
 
 
         }
-      }
-      break;  // Aqui tambien podriamos borrar el estado de Read ya que elo de Waiting tambien funcionaria como read, no?
-    case SerialStates::READ_REQ:
-      {
       }
       break;
     case SerialStates::WRITE_REQ: //aqui incluimos el checksum
@@ -75,61 +71,70 @@ void taskSerial()
           //Bad route
           //state = StateTaskCom::WAIT_INIT;
           }*/
-
-        //Hay que revisar de esto que es todo lo que necesitamos  
-        bufferRx[dataCounter] = dataRx;
-        dataCounter++;
-
-        // is the packet completed?
-        if (bufferRx[0] == dataCounter - 1) {
-
-          // Check received data
-          uint8_t calcChecksum = 0;
-          for (uint8_t i = 1; i <= dataCounter - 1; i++) {
-            calcChecksum = calcChecksum ^ bufferRx[i - 1];
-          }
-          if (calcChecksum == bufferRx[dataCounter - 1]) {
-            bufferTx[0] = dataCounter - 3; //Length
-            calcChecksum = bufferTx[0];
-
-            // Calculate Tx checksum
-            for (uint8_t i = 4; i <= dataCounter - 1; i++) {
-              bufferTx[i - 3] = bufferRx[i - 1];
-              calcChecksum = calcChecksum ^ bufferRx[i - 1];
-            }
-
-            bufferTx[dataCounter - 3] = calcChecksum;
-            Serial.write(0x4A);
-            Serial.write(bufferTx, dataCounter - 2);
-            //timerOld = millis();
-            state = StateTaskCom::WAITING_RESPONSE;
-          }
-          else {
+          //Hay que revisar que neceistamos de todo esto
+        if (Serial.available()) {
+          uint8_t dataRx = Serial.read();
+          if (dataCounter >= 20) {
             Serial.write(0x3F);
             dataCounter = 0;
             //timerOld = millis();
-            state = StateTaskCom::WRITE_REQ;
+            serialState = SerialStates::WRITE_REQ;
+          } else
+          { bufferRx[dataCounter] = dataRx;
+            dataCounter++;
+
+            // is the packet completed?
+            if (bufferRx[0] == dataCounter - 1) {
+
+              // Check received data
+              uint8_t calcChecksum = 0;
+              for (uint8_t i = 1; i <= dataCounter - 1; i++) {
+                calcChecksum = calcChecksum ^ bufferRx[i - 1];
+              }
+              if (calcChecksum == bufferRx[dataCounter - 1]) {
+                bufferTx[0] = dataCounter - 3; //Length
+                calcChecksum = bufferTx[0];
+
+                // Calculate Tx checksum
+                for (uint8_t i = 4; i <= dataCounter - 1; i++) {
+                  bufferTx[i - 3] = bufferRx[i - 1];
+                  calcChecksum = calcChecksum ^ bufferRx[i - 1];
+                }
+
+                bufferTx[dataCounter - 3] = calcChecksum;
+                Serial.write(0x4A);
+                Serial.write(bufferTx, dataCounter - 2);
+                //timerOld = millis();
+                serialState = SerialStates::WAITING_RESPONSE;
+              } else {
+                Serial.write(0x3F);
+                dataCounter = 0;
+                //timerOld = millis();
+                serialState = SerialStates::WRITE_REQ;
+              }
+            }
+
           }
+
+
         }
+        break;
+      case SerialStates::WAITING_RESPONSE:
+        {
 
+
+        }
+        break;
+      case SerialStates::PROCESS_RESPONSE:
+        {
+
+
+        }
+        break;
       }
-      break;
-    case SerialStates::WAITING_RESPONSE:
-      {
-
-
-      }
-      break;
-    case SerialStates::PROCESS_RESPONSE:
-      {
-
-
-      }
+    default:
       break;
   }
-default:
-  break;
-}
 }
 
 void taskBeat() {
