@@ -32,11 +32,18 @@ namespace Quiz3
             _serialPort.DtrEnable = true;
             _serialPort.Open();
 
+            //Para el cheksum
+            byte[] data = { 0x73 };
+            _serialPort.Write(data, 0, 1);
+            byte[] bufferRead = new byte[17];
+
 
             switch (states)
             {
                 case States.INIT:
-                               
+
+                   
+
                     states = States.WAITING;
                     break;
 
@@ -62,17 +69,32 @@ namespace Quiz3
                 case States.READ:
 
                     //recibe los datos 
+                    if (_serialPort.BytesToRead >= 17)
+                    {
+                        _serialPort.Read(bufferRead, 0, 17);
 
+                        for (int i = 0; i < 17; i++)
+                        {
+                            Console.Write(bufferRead[i].ToString("X2") + " ");
+                        }
 
-                    states = States.RESPONSE;
+                        //posiblemente esto no sea necesario
+                        Console.WriteLine();
+                        Console.WriteLine(System.BitConverter.ToSingle(bufferRead, 0));
+                        Console.ReadKey();
+                        _serialPort.Write(data, 0, 1);
+
+                    }
+
+                    states = States.CHECHING;
                     break;
                 case States.CHECHING:
 
                     while (dataCounter < 18)
                     {
-                        int dataRx = _serialPort.ReadLine(); //pendiente de revisión
+                         //pendiente de revisión
 
-                        bufferRx[dataCounter] = dataRx;
+                        bufferRx[dataCounter] = bufferRead[dataCounter];
                         dataCounter++;
 
                         // is the packet completed?
