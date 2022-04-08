@@ -55,6 +55,7 @@ void taskSerial()
           if (Serial.read() == 0x2A)
           {
             Serial.print("2a Recibido");
+            Serial.println();
             serialState = SerialStates::WRITE_REQ;
           }
           //          else
@@ -109,25 +110,25 @@ void taskSerial()
       }
     case SerialStates::READ_RESPONSE:
       {
+        if (sendPackages ==  3)
+        {
+          Serial.print("Limite De Packetes Superado");
+          serialState = SerialStates::INCORRECT_RESPONSE;
+        }
         if (Serial.available())
         {
           if (Serial.read() == 0xE3)
           {
             Serial.print("E3 Recibido");
+            Serial.println();
             serialState = SerialStates::CORRECT_RESPONSE;              //Si llega el E3 manda a CORRECT RESPONSE
           }
           else if (Serial.read() == 0xB0)
           {
             Serial.print("B0 Recibido");
-            if (sendPackages ==  3)
-            {
-              Serial.print("Limite De Packetes Superado");
-              serialState = SerialStates::INCORRECT_RESPONSE;
-            } else {
-              //Se manda el paquete de nuevo
-              serialState = SerialStates::WRITE_REQ;
-              sendPackages++;
-            }
+            Serial.println(sendPackages);
+            sendPackages++;
+            serialState = SerialStates::WRITE_REQ;
           }
         }
 
