@@ -52,10 +52,9 @@ void taskSerial()
         if (Serial.available())
         {
           Serial.print("Holii");
-          //String dato = Serial.readStringUntil('\n');
           if (Serial.read() == 0x2A)
           {
-            Serial.print("2a recibido :D");
+            Serial.print("2a Recibido");
             serialState = SerialStates::WRITE_REQ;
           }
           //          else
@@ -68,38 +67,43 @@ void taskSerial()
     case SerialStates::WRITE_REQ:
       {
         //Armamos el paquete:
-        float fnum01 = 3589.3645;
-        float fnum02 = 1519.2745;
-        float fnum03 = 1313.2121;
-        uint32_t inum32 = 420;
+        //        float fnum01 = 39.36;
+        //        float fnum02 = 15.27;
+        //        float fnum03 = 13.21;
+        uint32_t inum32 = 42;
+        float fArr[3] = {39.36, 15.27, 13.21};
 
         //Llenamos el paquete:
-        memcpy(packagesArr, (uint8_t *)&fnum01, 4);
-        memcpy(packagesArr + 4, (uint8_t *)&fnum02, 4);
-        memcpy(packagesArr + 8, (uint8_t *)&fnum03, 4);
-        memcpy(packagesArr + 12, (uint8_t *)&inum32, 4);
+        //        memcpy(packagesArr, (uint8_t *)&fnum01, 4);
+        //        memcpy(packagesArr + 4, (uint8_t *)&fnum02, 4);
+        //        memcpy(packagesArr + 8, (uint8_t *)&fnum03, 4);
+        //        memcpy(packagesArr + 12, (uint8_t *)&inum32, 4);
 
         //Mostramos en pantalla el paquete armado:
-        for (uint8_t j = 1; j <= 3; j++) {
+        for (int  j = 0; j < 3; j++) {
           //los envio por consola para verificar
-          Serial.println(packagesArr[j]);
+          Serial.println(fArr[j]);
         }
-
+        Serial.println (inum32);
         //para el Checksum:
         uint8_t calcChecksum = 0;
-        dataCounter = 0;
+        //dataCounter = 0;
 
         //Llenamos el Buffer del Checksum con los numeros del paquete
-        bufferRx[0] = {( (uint8_t *)&packagesArr[0], 4)};
-        bufferRx[4] = {( (uint8_t *)&packagesArr[0], 4)};
-        bufferRx[8] = {( (uint8_t *)&packagesArr[0], 4)};
+        //        bufferRx[0] = {( (uint8_t *)&packagesArr[0], 4)};
+        //        bufferRx[4] = {( (uint8_t *)&packagesArr[1], 4)};
+        //        bufferRx[8] = {( (uint8_t *)&packagesArr[2], 4)};
+        bufferRx[0] = {( (uint8_t *)&fArr[0], 4)};
+        bufferRx[4] = {( (uint8_t *)&fArr[1], 4)};
+        bufferRx[8] = {( (uint8_t *)&fArr[2], 4)};
         bufferRx[12] = inum32;
-
+        Serial.println();
         //El Calculamos el Checksum:
         for (uint8_t i = 1; i <= dataCounter - 1; i++) {
           calcChecksum = calcChecksum ^ bufferRx[i - 1];
         }
-        Serial.print(calcChecksum);
+        Serial.write(calcChecksum);
+        Serial.print("Checksum Done");
         serialState = SerialStates::READ_RESPONSE;
         break;
       }
@@ -109,19 +113,22 @@ void taskSerial()
         {
           if (Serial.read() == 0xE3)
           {
-            Serial.print("E3 Recibido :P");
+            Serial.print("E3 Recibido");
             serialState = SerialStates::CORRECT_RESPONSE;              //Si llega el E3 manda a CORRECT RESPONSE
           }
           else if (Serial.read() == 0xB0)
           {
-            Serial.print("B0 recibido :c");
-            while (sendPackages < 3)
+            Serial.print("B0 Recibido");
+            if (sendPackages ==  3)
+            {
+              Serial.print("Limite De Packetes Superado");
+              serialState = SerialStates::INCORRECT_RESPONSE;
+            } else {
               //Se manda el paquete de nuevo
-              Serial.write(packagesArr, 17);
-            sendPackages++;
+              serialState = SerialStates::WRITE_REQ;
+              sendPackages++;
+            }
           }
-          //Despues de mandar 3 veces el Paquete se va a INCORRECT RESPONSE
-          serialState = SerialStates::INCORRECT_RESPONSE;
         }
 
         break;
@@ -130,18 +137,21 @@ void taskSerial()
       {
 
         static uint32_t CorrectCounter = 0;
+        //static uint32_t previousCounter = 0;
         const uint32_t CorrectMaxTime = 3000;
 
         CorrectCounter = millis();
 
         //Avisamos por pantalla que todo está correcto:
         display.clear();
-        display.drawString(9, 0, "CORRECT!");
+        //display.drawString(9, 0, "CORRECT!");
+        display.drawString(0, 5, "CORRECT!");
         display.display();
 
-        if ( (millis() - CorrectCounter) >= CorrectMaxTime)
+        if ( CorrectCounter >= CorrectMaxTime)
         {
           display.clear();
+          Serial.print("Good ending.");
           serialState = SerialStates::INIT;
         }
 
@@ -163,7 +173,8 @@ void taskSerial()
 
         //Aviso por pantalla:
         display.clear();
-        display.drawString(9, 0, "INCORRECT!");
+        //display.drawString(9, 0, "INCORRECT!");
+        display.drawString(0, 5, "INCORRECT!");
         display.display();
 
         //Prendo y apagó el Led:
@@ -182,6 +193,7 @@ void taskSerial()
           digitalWrite(LED1, ledState);
           //Cuando hayan pasado los 3 seg
           if (ledTimer == 0) {
+            Serial.print("Bad ending.");
             Serial.print("Led OFF");
             serialState = SerialStates::INIT;
           }
