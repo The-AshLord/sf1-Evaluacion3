@@ -137,11 +137,11 @@ void taskSerial()
     case SerialStates::CORRECT_RESPONSE:
       {
 
-        static uint32_t CorrectCounter = 0;
         //static uint32_t previousCounter = 0;
         const uint32_t CorrectMaxTime = 3000;
+        
+        uint32_t CorrectCounter = millis();
 
-        CorrectCounter = millis();
 
         //Avisamos por pantalla que todo está correcto:
         display.clear();
@@ -149,7 +149,7 @@ void taskSerial()
         display.drawString(0, 5, "CORRECT!");
         display.display();
 
-        if ( CorrectCounter >= CorrectMaxTime)
+        if ( CorrectCounter == CorrectMaxTime)
         {
           display.clear();
           Serial.print("Good ending.");
@@ -165,7 +165,7 @@ void taskSerial()
         static uint32_t previousMillis = 0;
         static uint32_t LedtaskCounter = 0;
         static uint8_t ledState = LOW;
-        uint8_t ledTimer = 3;
+        static uint8_t ledTimer = 3;
 
         uint32_t currentMillis = millis();
         digitalWrite(LED1, ledState);
@@ -194,6 +194,7 @@ void taskSerial()
           digitalWrite(LED1, ledState);
           //Cuando hayan pasado los 3 seg
           if (ledTimer == 0) {
+            display.clear();
             Serial.print("Bad ending.");
             Serial.print("Led OFF");
             serialState = SerialStates::INIT;
